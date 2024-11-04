@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/name: kube2iam
+  name: kube2iam
+  namespace: kube-system
+spec:
+  selector:
+   matchLabels:
+    app.kubernetes.io/name: kube2iam
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube2iam
+    spec:
+      containers:
+      - name: kube2iam
+        image: nholuongut/kube2iam:latest
+        args:
+        - --host-ip=$(HOST_IP)
+        - --iptables=true
+        - --node=$(NODE_NAME)
+        env:
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        ports:
+        - containerPort: 8181
+          protocol: TCP
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - mountPath: /run/xtables.lock
+            name: xtables-lock
+            readOnly: false
+      hostNetwork: true
+      serviceAccountName: kube2iam
+      volumes:
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
